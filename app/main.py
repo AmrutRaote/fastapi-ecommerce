@@ -1,19 +1,32 @@
-from fastapi import FastAPI, HTTPException, Query, Path
-from services.products import get_all_products, add_product, remove_product, change_product
+from fastapi import FastAPI, HTTPException, Query, Path, Depends, Request
+from services.products import get_all_products, add_product, remove_product, change_product, load_products
 from schema.product import Product,ProductUpdate 
 from uuid import uuid4, UUID
 from datetime import datetime
+from typing import List, Dict
+from dotenv import load_dotenv
+import os
+from fastapi.responses import JSONResponse
 
+load_dotenv()
 app = FastAPI()
 
-@app.get("/")
-def root():
-    return "Shree Swami Samarth, Om Namah Shivay, Ganpati Bappa Morya"
+
+def common_logic():
+    return "Hello World"
+
+@app.get("/", response_model=dict)
+def root(dep=Depends(common_logic)):
+    return JSONResponse(
+        status_code=200,
+        content={"messge":"Welcome to FastApi", "dependency": dep,}
+    )
 
 
 
-@app.get("/products")
+@app.get("/products", response_model=Dict)
 def list_products(
+    dep = Depends(load_products),
     name:str = Query(default=None, min_length=1, max_length=50, description="search product by name (case Insensitive)"),
     short_by_price: bool = Query(default=False, description="Sort products by price"),
     order: str = Query(default='asc', description="Sort order when short_by_price=true (asc, desc)"),
@@ -21,7 +34,7 @@ def list_products(
     offset:int = Query(default=0, ge=0, description="Pagination offset"),
     ):
 
-    products = get_all_products()
+    products = dep
 
     if name:
         needle = name.strip().lower()
@@ -44,7 +57,7 @@ def list_products(
     }
 
 
-@app.get("/products/{product_id}")  # ... means required (product_id is required)
+@app.get("/products/{product_id}", response_model=Dict)  # ... means required (product_id is required)
 def get_product_by_id(product_id:str = Path(..., min_length=36, max_length=36, description="UUID of product" )): 
     products = get_all_products()  
 
